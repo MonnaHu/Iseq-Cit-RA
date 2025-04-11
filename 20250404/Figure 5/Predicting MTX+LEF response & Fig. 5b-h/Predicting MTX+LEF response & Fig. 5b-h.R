@@ -20,7 +20,7 @@ rm(list=ls())
 
 #################################################################### 5-fold feature selection
 ##################################### input data
-d1 = read.csv("H:/20250330 figure+code/Figure 5/ML dataset 1 for machine learning.csv",row.names = 1)
+d1 = read.csv("H:/20250330 figure+code/Figure 5/MTX+LEF dataset 1 for machine learning.csv",row.names = 1)
 table(d1$csDMARDs)
 df = d1[,-c(1,3,4)]; colnames(df)[1]="target"
 names(d1)
@@ -29,7 +29,7 @@ no = df %>% filter(target==0)
 
 
 ####################################  input external data
-d2 = read.csv("H:/20250330 figure+code/Figure 5/ML dataset 2 for machine learning.csv",row.names = 1)
+d2 = read.csv("H:/20250330 figure+code/Figure 5/MTX+LEF dataset 2 for machine learning.csv",row.names = 1)
 colnames(d2)[2]="target"
 
 
@@ -147,11 +147,11 @@ freq2 = reshape2::dcast(freq, features ~ f, value.var = "Fold") %>%
 features <- freq2$features[freq2$Lasso>0 & freq2$RF>0 & freq2$RFERF>0 & freq2$RFESVM>0]
 features
 
-d2 = read.csv("H:/20250330 figure+code/Figure 5/ML dataset 2 for machine learning.csv",row.names = 1)
+d2 = read.csv("H:/20250330 figure+code/Figure 5/MTX+LEF dataset 2 for machine learning.csv",row.names = 1)
 colnames(d2)[2]="target"
 
 
-d1 = read.csv("H:/20250330 figure+code/Figure 5/ML dataset 1 for machine learning.csv",row.names = 1)
+d1 = read.csv("H:/20250330 figure+code/Figure 5/MTX+LEF dataset 1 for machine learning.csv",row.names = 1)
 table(d1$csDMARDs)
 df = d1[,-c(1,3,4)]; colnames(df)[1]="target"
 names(d1)
@@ -305,11 +305,11 @@ ggsave("Fig. 5c.pdf", width = 7, height = 3.5)
 
 #################################################### final model
 rm(list=ls())
-d2 = read.csv("H:/20250330 figure+code/Figure 5/ML dataset 2 for machine learning.csv",row.names = 1)
+d2 = read.csv("H:/20250330 figure+code/Figure 5/MTX+LEF dataset 2 for machine learning.csv",row.names = 1)
 colnames(d2)[2]="target"
 
 
-d1 = read.csv("H:/20250330 figure+code/Figure 5/ML dataset 1 for machine learning.csv",row.names = 1)
+d1 = read.csv("H:/20250330 figure+code/Figure 5/MTX+LEF dataset 1 for machine learning.csv",row.names = 1)
 table(d1$csDMARDs)
 df = d1[,-c(1,3,4)]; colnames(df)[1]="target"
 names(d1)

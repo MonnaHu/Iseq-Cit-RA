@@ -20,7 +20,7 @@ rm(list=ls())
 
 #################################################################### 5-fold feature selection
 ##################################### input cohort2 
-d1 = read.csv("H:/20250330 figure+code/Figure 5/MH dataset 2 for machine learning.csv",row.names = 1)
+d1 = read.csv("H:/20250330 figure+code/Figure 5/MTX+HCQ dataset 2 for machine learning.csv",row.names = 1)
 table(d1$csDMARDs)
 df = d1[,-c(1,3,4)]; colnames(df)[1]="target"
 names(d1)
@@ -144,11 +144,11 @@ freq2 = reshape2::dcast(freq, features ~ f, value.var = "Fold") %>%
 features <- freq2$features[freq2$Lasso>1 & freq2$RF>1 & freq2$RFERF>1 & freq2$RFESVM>1]
 features
 
-d2 = read.csv("F:/RA/第一次投稿/审稿意见/response machine learning/train和test数据处理/MH dataset 1 for machine learning.csv",row.names = 1)
+d2 = read.csv("F:/RA/第一次投稿/审稿意见/response machine learning/train和test数据处理/MTX+HCQ dataset 1 for machine learning.csv",row.names = 1)
 colnames(d2)[2]="target"
 
 
-d1 = read.csv("F:/RA/第一次投稿/审稿意见/response machine learning/train和test数据处理/MH dataset 2 for machine learning.csv",row.names = 1)
+d1 = read.csv("F:/RA/第一次投稿/审稿意见/response machine learning/train和test数据处理/MTX+HCQ dataset 2 for machine learning.csv",row.names = 1)
 table(d1$csDMARDs)
 df = d1[,-c(1,3,4)]; colnames(df)[1]="target"
 names(d1)
@@ -307,11 +307,11 @@ ggsave("Fig. 5j.pdf", width = 7, height = 3.5)
 
 
 rm(list=ls())
-d2 = read.csv("H:/20250330 figure+code/Figure 5/MH dataset 1 for machine learning.csv",row.names = 1)
+d2 = read.csv("H:/20250330 figure+code/Figure 5/MTX+HCQ dataset 1 for machine learning.csv",row.names = 1)
 colnames(d2)[2]="target"
 
 
-d1 = read.csv("H:/20250330 figure+code/Figure 5/MH dataset 2 for machine learning.csv",row.names = 1)
+d1 = read.csv("H:/20250330 figure+code/Figure 5/MTX+HCQ dataset 2 for machine learning.csv",row.names = 1)
 table(d1$csDMARDs)
 df = d1[,-c(1,3,4)]; colnames(df)[1]="target"
 names(d1)
