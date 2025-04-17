@@ -1,8 +1,7 @@
 library(ggplot2)
 
 rm(list = ls())
-setwd("E:/sunny文件/瓜氨酸化蛋白抗原的发现/整理文章用图/返修/代码和数据复核/20250330 figure+code/Figure 7/Fig. 7b")
-dat = read.csv("Fig 7b.csv")
+dat = read.csv("Fig 6b.csv")
 
 ggplot()+
   geom_bar(data=dat, aes(order, pos_rate, fill=pos_rate, color=sig),stat="identity", width=.6)+

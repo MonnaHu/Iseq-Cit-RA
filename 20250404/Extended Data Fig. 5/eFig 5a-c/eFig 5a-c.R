@@ -1,17 +1,19 @@
+setwd("H:/20250330 figure+code/Extended Data Fig. 5/eFig 5a-c")
 library(dplyr)
 library(ggseqlogo)
 library(ggplot2)
 
 rm(list = ls())
-df = readxl::read_xlsx("bigru_3_64.xlsx", sheet=1) %>% 
-  filter(nchar_8AApep==17)
-df$seq17aa = gsub("X","R",df$seq17aa)
-table(df$group)
-df = df %>% arrange(pred)
-dat=list(pos_all=df$seq17aa[df$group=="all_pos"],neg_all=df$seq17aa[df$group=="all_neg"],neg_top=df$seq17aa[1:209])
+df = readxl::read_xlsx("Sequence motif.xlsx", sheet=1) %>% 
+  filter(nchar==17)
+table(df$`cutoff>0.8`)
+names(df)
+df = df %>% arrange(`Highest Confidence score`)
+dat=list(pos_all=df$seq17aa[df$`cutoff>0.8`==1],neg_all=df$seq17aa[df$`cutoff>0.8`==0],neg_top=df$seq17aa[1:table(df$`cutoff>0.8`)[["1"]]], all=df$seq17aa)
 
-ggseqlogo(dat, seq_type = "aa", scale="free", method = "probability", nrow=4, stack_width=0.8)+
-  scale_y_continuous(expand = c(0,0), limits = c(0,1))+
+ggseqlogo(dat, seq_type = "aa", scale="free", #method = "probability", 
+          nrow=4, stack_width=0.8)+
+  #scale_y_continuous(expand = c(0,0), limits = c(0,1))+
   theme(axis.line.y=element_line(color="black"),
         axis.ticks.y=element_line(color="black"),
         axis.text.x = element_blank())
