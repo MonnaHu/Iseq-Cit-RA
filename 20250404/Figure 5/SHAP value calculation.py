@@ -1,5 +1,5 @@
 
-conda activate pytorch11
+# conda activate pytorch11
 import pandas as pd
 import shap
 from sklearn import neighbors
@@ -34,7 +34,7 @@ x.columns
 y = data.iloc[:, 1]
 
 # Train the KNN model
-n_neighbors = 9
+n_neighbors = 7
 knn = neighbors.KNeighborsClassifier(n_neighbors,weights='distance')
 knn.fit(x, y)
 # Produce the SHAP values

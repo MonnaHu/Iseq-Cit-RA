@@ -20,7 +20,8 @@ rm(list=ls())
 
 #################################################################### 5-fold feature selection
 ##################################### input cohort2 
-d1 = read.csv("H:/20250330 figure+code/Figure 5/MTX+HCQ dataset 2 for machine learning.csv",row.names = 1)
+d1 = read.csv("H:/20250330 figure+code/Figure 5/MTX+HCQ dataset 1 for machine learning.csv",row.names = 1)
+
 table(d1$csDMARDs)
 df = d1[,-c(1,3,4)]; colnames(df)[1]="target"
 names(d1)
@@ -29,7 +30,7 @@ no = df %>% filter(target==0)
 
 
 #################################### 5-fold
-seed=c(1,12,123,1234,12345)
+seed=c(1,12,123)
 
 cv5_sample <- function(data,n){
   lapply(c(seed), function(seed){
@@ -37,7 +38,7 @@ cv5_sample <- function(data,n){
     for(i in seed){
       set.seed(i)
       data = data[!data%in%result$re]
-      if(length(data) < round(n/5)+2){re = data}else{re = sample(data, round(n/5))}
+      if(length(data) < round(n/3)+2){re = data}else{re = sample(data, round(n/3))}
       re = data.frame(re,seed=i)
       result = rbind(result, re)
     }
@@ -50,37 +51,22 @@ sample_yes = do.call(rbind, cv5_sample(rownames(yes), nrow(yes)))
 sample_no = do.call(rbind,cv5_sample(rownames(no), nrow(no)))
 
 sample = lapply(seed, function(s){data = c(sample_yes$re[sample_yes$seed==s], sample_no$re[sample_no$seed==s])})
-names(sample) = 1:5
-
-
-################################# classifiers
-models_list <- list(
-  "1Logistic Regression" = "glm",
-  "2ridge"="glmnet",
-  "3lasso"="glmnet",
-  "4KNN" = "knn",
-  "5SVM" = "svmRadial",
-  "6Decision Tree" = "rpart",
-  "7Random Forest" = "rf",
-  "8XGBoost" = "xgbTree",
-  "9LightGBM" = "gbm"
-)
-
+names(sample) = 1:3
 
 #################################
 Features = NULL
 i=1
 
-for (i in 1:5) {
+for (i in 1:length(sample)) {
   training = df[!(rownames(df) %in% sample[[i]]),]
   
   ################################  oversampling and SMOTE
-  table(training$target)
+  table(training$target); rep = (table(training$target)[1] - table(training$target)[2])/2
   t_yes = training[training$target==1,]
-  set.seed(123); t_SMOTE <-  SMOTE(training[,2:ncol(training)],training[1],dup_size = 1, K=5)$data 
+  set.seed(123); t_SMOTE <-  SMOTE(training[,2:ncol(training)],training[1],dup_size = 1, K=3)$data 
   data1 = t_SMOTE[,c(ncol(t_SMOTE), 1:(ncol(t_SMOTE)-1))]; colnames(data1)[1] ="target"; table(data1$target)
   data1 = data1 %>% filter(target==1)
-  training2 = rbind(training,t_yes[sample(1:nrow(t_yes),10),])
+  training2 = rbind(training,t_yes[sample(1:nrow(t_yes),rep),])
   set.seed(123); data = rbind(training2, data1[sample(1:nrow(data1),table(training2$target)["0"]-table(training2$target)["1"]),]); table(data$target)
   
   set.seed(123); data = data[sample(1:nrow(data), nrow(data)),]
@@ -90,12 +76,12 @@ for (i in 1:5) {
   
   # feature selection
   # ① LASSO 
-  set.seed(123); fitcv<-cv.glmnet(x,y,family = "binomial",alpha = 1,type.measure = "auc", nfolds=5)
+  set.seed(123); fitcv<-cv.glmnet(x,y,family = "binomial",alpha = 1,type.measure = "auc", nfolds=3)
   set.seed(123); lasso_model <- glmnet(x, y, alpha=1, family="binomial", lambda=fitcv$lambda.min)
   sf_lasso <- colnames(x)[which(coef(lasso_model) != 0)-1]  
   
   # ② RF 
-  set.seed(123);ctrl <- trainControl(method = "cv", number = 5)
+  set.seed(123);ctrl <- trainControl(method = "cv", number = 3)
   set.seed(123);rf_model <- train(x = x, y = as.factor(y), method = "rf",trControl = ctrl,tuneGrid = expand.grid(mtry = seq(1,ncol(x),2)))
   rf <-rf_model$finalModel 
   importance = importance(rf) %>% data.frame() %>% arrange(-MeanDecreaseGini)
@@ -103,12 +89,12 @@ for (i in 1:5) {
   sf_rf <- rownames(importance)[1:15]
   
   # ③ REF+RF
-  set.seed(123); control <- rfeControl(functions = rfFuncs,method = "cv", number = 5) 
+  set.seed(123); control <- rfeControl(functions = rfFuncs,method = "cv", number = 3) 
   set.seed(123); rfe_results <- rfe(x = x,y = y,sizes = seq(1, ncol(x), by = 3), rfeControl = control, method = "rf")
   sf_rfrfe <- predictors(rfe_results)
   
   # ④ REF+SVM
-  set.seed(123); control <- rfeControl(functions = rfFuncs,method = "cv", number = 5) 
+  set.seed(123); control <- rfeControl(functions = rfFuncs,method = "cv", number = 3) 
   set.seed(123); rfe_results <- rfe(x = x,y = y,sizes = seq(1, ncol(x), by = 3), rfeControl = control, method = "svmLinear")
   sf_svmrfe <-  predictors(rfe_results)
   
@@ -126,7 +112,7 @@ freq = Features
 names(freq)
 freq2 = reshape2::dcast(freq, features ~ f, value.var = "Fold") %>%
   arrange(desc(Lasso),desc(RF),desc(RFERF),desc(RFESVM))
-features <- freq2 %>% filter(Lasso>1, freq2$RF>1, freq2$RFERF>1, freq2$RFESVM>1) # too many features when cutoff=0
+features <- freq2 %>% filter(Lasso>0, freq2$RF>0, freq2$RFERF>0, freq2$RFESVM>0) 
 features
 
 write.csv(Features,"5-fold 4_features_selection results.csv", row.names = F)
@@ -141,14 +127,14 @@ freq = read.csv("5-fold 4_features_selection results.csv")
 names(freq)
 freq2 = reshape2::dcast(freq, features ~ f, value.var = "Fold") %>%
   arrange(desc(Lasso),desc(RF),desc(RFERF),desc(RFESVM))
-features <- freq2$features[freq2$Lasso>1 & freq2$RF>1 & freq2$RFERF>1 & freq2$RFESVM>1]
+features <- freq2$features[freq2$Lasso>0 & freq2$RF>0 & freq2$RFERF>0 & freq2$RFESVM>0]
 features
 
-d2 = read.csv("F:/RA/第一次投稿/审稿意见/response machine learning/train和test数据处理/MTX+HCQ dataset 1 for machine learning.csv",row.names = 1)
+d2 = read.csv("H:/20250330 figure+code/Figure 5/MTX+HCQ dataset 2 for machine learning.csv",row.names = 1)
 colnames(d2)[2]="target"
 
 
-d1 = read.csv("F:/RA/第一次投稿/审稿意见/response machine learning/train和test数据处理/MTX+HCQ dataset 2 for machine learning.csv",row.names = 1)
+d1 = read.csv("H:/20250330 figure+code/Figure 5/MTX+HCQ dataset 1 for machine learning.csv",row.names = 1)
 table(d1$csDMARDs)
 df = d1[,-c(1,3,4)]; colnames(df)[1]="target"
 names(d1)
@@ -157,7 +143,7 @@ no = df %>% filter(target==0)
 
 
 ####################################不放回抽取fold
-set.seed(1);seed = sample(1:10000,5)
+set.seed(123);seed = sample(1:100000,3)
 
 cv5_sample <- function(data,n){
   lapply(c(seed), function(seed){
@@ -165,7 +151,7 @@ cv5_sample <- function(data,n){
     for(i in seed){
       set.seed(i)
       data = data[!data%in%result$re]
-      if(length(data) < round(n/5)+2){re = data}else{re = sample(data, round(n/5))}
+      if(length(data) < round(n/3)+2){re = data}else{re = sample(data, round(n/3))}
       re = data.frame(re,seed=i)
       result = rbind(result, re)
     }
@@ -178,7 +164,7 @@ sample_yes = do.call(rbind, cv5_sample(rownames(yes), nrow(yes)))
 sample_no = do.call(rbind,cv5_sample(rownames(no), nrow(no)))
 
 sample = lapply(seed, function(s){data = c(sample_yes$re[sample_yes$seed==s], sample_no$re[sample_no$seed==s])})
-names(sample) = 1:25
+names(sample) = 1:3
 
 models_list <- list(
   "1Logistic Regression" = "glm",
@@ -195,17 +181,17 @@ models_list <- list(
 results=NULL
 i=1
 
-for (i in 1:5) {
+for (i in 1:3) {
   validation = df[rownames(df) %in% sample[[i]],]  # 每个fold做验证集
   training = df[!(rownames(df) %in% sample[[i]]),] # k-1 folds作为训练集
   
   ################################ 复制样本和轻微噪音
-  table(training$target)
+  table(training$target); rep = (table(training$target)[1] - table(training$target)[2])/2
   t_yes = training[training$target==1,]
-  set.seed(123); t_SMOTE <-  SMOTE(training[,2:ncol(training)],training[1],dup_size = 1, K=5)$data  # K: 近邻数（默认5，建议3-10之间; dup_size = 1 表示每个阳性样本生成 1个 新样本（即阳性样本翻倍）
+  set.seed(123); t_SMOTE <-  SMOTE(training[,2:ncol(training)],training[1],dup_size = 1, K=3)$data  # K: 近邻数（默认5，建议3-10之间; dup_size = 1 表示每个阳性样本生成 1个 新样本（即阳性样本翻倍）
   data1 = t_SMOTE[,c(ncol(t_SMOTE), 1:(ncol(t_SMOTE)-1))]; colnames(data1)[1] ="target"; table(data1$target)
   data1 = data1 %>% filter(target==1)
-  training2 = rbind(training,t_yes[sample(1:nrow(t_yes),10),])
+  training2 = rbind(training,t_yes[sample(1:nrow(t_yes),rep),])
   set.seed(123); data = rbind(training2, data1[sample(1:nrow(data1),table(training2$target)["0"]-table(training2$target)["1"]),]); table(data$target)
   
   # 打乱顺序
@@ -226,8 +212,13 @@ for (i in 1:5) {
       trained_model <- train(target ~ ., data = training_selected, method = model_method, trControl = trainControl(method = "cv", number = 3), tuneGrid = ridge_grid)
     }else{
       if(model_name=="3lasso"){
-        trained_model <- train(target ~ ., data = training_selected, method = model_method, trControl = trainControl(method = "cv", number = 3))
-      }else{trained_model <- train(target ~ ., data = training_selected, method = model_method, trControl = trainControl(method = "cv", number = 3))}}
+        lasso_grid <- expand.grid(alpha = 1, lambda = seq(0.001, 0.1, by = 0.01))
+        trained_model <- train(target ~ ., data = training_selected, method = model_method, trControl = trainControl(method = "cv", number = 3), tuneGrid = lasso_grid)
+      }else{
+        if(model_name == "9LightGBM"){
+          gbm_grid <- expand.grid(n.trees = 50,interaction.depth = 1,shrinkage = 0.1,n.minobsinnode = 2)
+          trained_model <- train(target ~ ., data = training_selected, method = model_method,trControl = trainControl(method = "cv", number = 3),tuneGrid = gbm_grid,verbose = FALSE)
+        }else{trained_model <- train(target ~ ., data = training_selected, method = model_method, trControl = trainControl(method = "cv", number = 3))}}}
     
     predictions_t <- predict(trained_model, training_selected[,-ncol(training_selected)])
     predictions_v <- predict(trained_model, validation_selected[,-ncol(validation_selected)])
@@ -293,7 +284,7 @@ ggplot(p2, aes(variable, mean, color=model, group=model, shape=model, lintype=mo
   scale_linetype_manual(values = c(1,2,2,1,2,2,1,1,1))+
   facet_wrap(.~set, ncol=3, scales = "free")+
   theme_classic()+
-  scale_y_continuous(limits = c(0.5,1), expand = c(0.01,0.01))+
+  scale_y_continuous(limits = c(0.2,1), expand = c(0.01,0.01))+
   theme(axis.text.x = element_text(angle = 90),
         strip.background = element_blank(),
         axis.line = element_line(linewidth=.5, color="black"),
@@ -307,11 +298,11 @@ ggsave("Fig. 5j.pdf", width = 7, height = 3.5)
 
 
 rm(list=ls())
-d2 = read.csv("H:/20250330 figure+code/Figure 5/MTX+HCQ dataset 1 for machine learning.csv",row.names = 1)
+d2 = read.csv("H:/20250330 figure+code/Figure 5/MTX+HCQ dataset 2 for machine learning.csv",row.names = 1)
 colnames(d2)[2]="target"
 
 
-d1 = read.csv("H:/20250330 figure+code/Figure 5/MTX+HCQ dataset 2 for machine learning.csv",row.names = 1)
+d1 = read.csv("H:/20250330 figure+code/Figure 5/MTX+HCQ dataset 1 for machine learning.csv",row.names = 1)
 table(d1$csDMARDs)
 df = d1[,-c(1,3,4)]; colnames(df)[1]="target"
 names(d1)
@@ -322,12 +313,12 @@ i=1
 training = df
 
 ################################ final model
-table(training$target)
+table(training$target); rep = (table(training$target)[1] - table(training$target)[2])/2
 t_yes = training[training$target==1,]
-set.seed(123); t_SMOTE <-  SMOTE(training[,2:ncol(training)],training[1],dup_size = 1, K=5)$data 
+set.seed(123); t_SMOTE <-  SMOTE(training[,2:ncol(training)],training[1],dup_size = 1, K=3)$data 
 data1 = t_SMOTE[,c(ncol(t_SMOTE), 1:(ncol(t_SMOTE)-1))]; colnames(data1)[1] ="target"; table(data1$target)
 data1 = data1 %>% filter(target==1)
-training2 = rbind(training,t_yes[sample(1:nrow(t_yes),10),])
+training2 = rbind(training,t_yes[sample(1:nrow(t_yes),rep),])
 set.seed(123); data = rbind(training2, data1[sample(1:nrow(data1),table(training2$target)["0"]-table(training2$target)["1"]),]); table(data$target)
 
 set.seed(123); data = data[sample(1:nrow(data), nrow(data)),]
@@ -335,13 +326,13 @@ set.seed(123); data = data[sample(1:nrow(data), nrow(data)),]
 
 ############################### 
 freq = read.csv("5-fold 4_features_selection results.csv") %>% 
-  select(features, Fold, f) %>% distinct() %>% filter(Fold %in% c(1:5))
+  select(features, Fold, f) %>% distinct()
 
 names(freq)
 freq2 = reshape2::dcast(freq, features ~ f, value.var = "Fold") %>%
   arrange(desc(Lasso),desc(RF),desc(RFERF),desc(RFESVM))
 
-features <- freq2$features[c(freq2$Lasso>1 & freq2$RF>1 & freq2$RFERF>1 & freq2$RFESVM>1)]
+features <- freq2$features[c(freq2$Lasso>0 & freq2$RF>0 & freq2$RFERF>0 & freq2$RFESVM>0)]
 features
 #####################################
 
@@ -349,7 +340,7 @@ features
 # clinical indicators + selected citrullinated peptides
 training_selected <- data[, c(features, "target")]
 external_selected = d2[,c(features, "target")]
-write.csv(training_selected[,c(14,1:13)],"training.csv")
+write.csv(training_selected[,c(ncol(training_selected),1:(ncol(training_selected)-1))],"training.csv")
 
 # clinical indicators only
 training_cli <- data[, c(features[features %in% c("TJC","DAS28.CRP.HM","SJC","CRP")], "target")]
@@ -384,7 +375,7 @@ dev.off()
 
 
 
-excluded_feat = colnames(df)[!(colnames(df) %in% c(features,"SJC","target"))]
+excluded_feat = colnames(df)[!(colnames(df) %in% c(features,"target"))]
 
 pdf("Fig 5m.pdf", width = 3, height = 3)
 auc = NULL
@@ -450,7 +441,7 @@ ggplot(p2, aes(variable, mean, color=group, group=group, shape=group))+
   scale_color_manual(values = c("#3d7dae","#af322f","#f9a363","#3b4992","#8b7ec0","#8a4198","#725663","green4","black"))+
   #facet_wrap(.~set, ncol=3, scales = "free")+
   theme_classic()+
-  scale_y_continuous(limits = c(0.3,1), expand = c(0.01,0.01))+
+  scale_y_continuous(limits = c(0.2,1), expand = c(0.01,0.01))+
   theme(axis.text.x = element_text(angle = 90),
         panel.grid.major = element_line(linetype=3, color="gray50"),
         strip.background = element_blank(),
